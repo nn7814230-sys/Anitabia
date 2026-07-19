@@ -1,0 +1,20 @@
+{
+  "name": "anitabia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Anitabia — каталог аниме-релизов",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev --workspace @anitabia/api\" \"npm run dev --workspace @anitabia/web\"",
+    "dev:api": "npm run dev --workspace @anitabia/api",
+    "dev:web": "npm run dev --workspace @anitabia/web",
+    "build": "npm run build --workspace @anitabia/api && npm run build --workspace @anitabia/web",
+    "db:migrate": "npm run db:migrate --workspace @anitabia/api",
+    "db:seed": "npm run db:seed --workspace @anitabia/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
