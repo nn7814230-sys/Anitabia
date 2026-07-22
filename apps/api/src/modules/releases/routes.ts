@@ -1,13 +1,14 @@
 import type { FastifyPluginAsync } from "fastify";
+
 import { findReleaseBySlug, listReleases } from "./repository.js";
 import type { ReleaseStatus } from "../../types.js";
 
 const allowedStatuses = new Set<ReleaseStatus>(["ongoing", "completed", "announced"]);
 
 function readLimit(value: unknown): number {
-  const limit = Number(value ?? 18);
-  if (!Number.isInteger(limit) || limit < 1) return 18;
-  return Math.min(limit, 50);
+  const limit = Number(value ?? 24);
+  if (!Number.isInteger(limit) || limit < 1) return 24;
+  return Math.min(limit, 200);
 }
 
 export const releaseRoutes: FastifyPluginAsync = async (app) => {

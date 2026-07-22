@@ -43,9 +43,12 @@ CREATE TABLE IF NOT EXISTS episodes (
   title TEXT,
   duration_seconds INTEGER,
   video_url TEXT,
+  cloudflare_stream_uid TEXT,
   published_at TIMESTAMPTZ,
   UNIQUE (release_id, number)
 );
+
+ALTER TABLE episodes ADD COLUMN IF NOT EXISTS cloudflare_stream_uid TEXT;
 
 CREATE INDEX IF NOT EXISTS releases_status_idx ON releases(status);
 CREATE INDEX IF NOT EXISTS releases_title_idx ON releases USING GIN (to_tsvector('simple', title));

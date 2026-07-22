@@ -9,6 +9,8 @@
     "start": "node dist/server.js",
     "db:migrate": "tsx src/database/migrate.ts",
     "db:seed": "tsx src/database/seed.ts",
+    "artwork:sync": "tsx src/scripts/sync-anilist-artwork.ts",
+    "stream:attach": "tsx src/scripts/attach-cloudflare-stream.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

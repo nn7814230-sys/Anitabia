@@ -26,5 +26,7 @@ export interface Episode {
   title: string | null;
   durationSeconds: number | null;
   videoUrl: string | null;
+  embedUrl: string | null;
+  videoProvider: "cloudflare_stream" | "native" | null;
   publishedAt: string | null;
 }

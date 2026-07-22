@@ -1,5 +1,7 @@
 import type { QueryResultRow } from "pg";
+
 import { pool } from "../../database/client.js";
+import { cloudflareStreamEmbedUrl } from "../playback/cloudflare.js";
 import type { Episode, Release, ReleaseStatus } from "../../types.js";
 
 type ReleaseRow = QueryResultRow & {
@@ -28,7 +30,13 @@ type EpisodeRow = QueryResultRow & {
   title: string | null;
   duration_seconds: number | null;
   video_url: string | null;
+  cloudflare_stream_uid: string | null;
   published_at: Date | null;
+};
+
+type ReleaseSitemapRow = QueryResultRow & {
+  slug: string;
+  updated_at: Date;
 };
 
 const releaseFields = `
@@ -61,12 +69,16 @@ function mapRelease(row: ReleaseRow): Release {
 }
 
 function mapEpisode(row: EpisodeRow): Episode {
+  const embedUrl = cloudflareStreamEmbedUrl(row.cloudflare_stream_uid);
+
   return {
     id: row.id,
     number: row.number,
     title: row.title,
     durationSeconds: row.duration_seconds,
     videoUrl: row.video_url,
+    embedUrl,
+    videoProvider: embedUrl ? "cloudflare_stream" : row.video_url ? "native" : null,
     publishedAt: row.published_at?.toISOString() ?? null,
   };
 }
@@ -135,7 +147,7 @@ export async function findReleaseBySlug(
   if (!row) return null;
 
   const episodeResult = await pool.query<EpisodeRow>(
-    `SELECT id, number, title, duration_seconds, video_url, published_at
+    `SELECT id, number, title, duration_seconds, video_url, cloudflare_stream_uid, published_at
      FROM episodes
      WHERE release_id = $1
      ORDER BY number`,
@@ -143,4 +155,17 @@ export async function findReleaseBySlug(
   );
 
   return { release: mapRelease(row), episodes: episodeResult.rows.map(mapEpisode) };
+}
+
+export async function listReleaseSitemapEntries(): Promise<Array<{ slug: string; updatedAt: Date }>> {
+  const result = await pool.query<ReleaseSitemapRow>(
+    `SELECT slug, updated_at
+     FROM releases
+     ORDER BY updated_at DESC`,
+  );
+
+  return result.rows.map((row) => ({
+    slug: row.slug,
+    updatedAt: row.updated_at,
+  }));
 }

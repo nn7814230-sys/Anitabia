@@ -12,7 +12,9 @@
     "dev:web": "npm run dev --workspace @anitabia/web",
     "build": "npm run build --workspace @anitabia/api && npm run build --workspace @anitabia/web",
     "db:migrate": "npm run db:migrate --workspace @anitabia/api",
-    "db:seed": "npm run db:seed --workspace @anitabia/api"
+    "db:seed": "npm run db:seed --workspace @anitabia/api",
+    "artwork:sync": "npm run artwork:sync --workspace @anitabia/api",
+    "stream:attach": "npm run stream:attach --workspace @anitabia/api --"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
