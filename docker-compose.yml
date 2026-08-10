@@ -18,9 +18,8 @@ services:
       retries: 10
 
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: ghcr.io/nn7814230-sys/anitabia-api:${ANITABIA_IMAGE_TAG:-latest}
+    pull_policy: missing
     restart: unless-stopped
     environment:
       HOST: 0.0.0.0
@@ -39,11 +38,8 @@ services:
         condition: service_healthy
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        VITE_API_URL: /api/v1
+    image: ghcr.io/nn7814230-sys/anitabia-web:${ANITABIA_IMAGE_TAG:-latest}
+    pull_policy: missing
     restart: unless-stopped
     expose:
       - "80"
