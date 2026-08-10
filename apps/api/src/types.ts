@@ -28,6 +28,13 @@ export interface Episode {
   durationSeconds: number | null;
   videoUrl: string | null;
   embedUrl: string | null;
-  videoProvider: "cloudflare_stream" | "native" | null;
+  videoProvider: "kodik" | "native" | null;
   publishedAt: string | null;
+}
+
+export interface AccountUser {
+  id: string;
+  email: string;
+  username: string;
+  createdAt: string;
 }

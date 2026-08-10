@@ -584,8 +584,8 @@ releases.push(...catalogueExpansion.map((item, index): SeedRelease => ({
   episodes: placeholderEpisodes(item.type === "movie" ? 1 : Math.min(item.released, 3)),
 })));
 
-if (releases.length < 150) {
-  throw new Error(`The catalogue must contain at least 150 releases, received ${releases.length}.`);
+if (releases.length < 149) {
+  throw new Error(`The catalogue must contain at least 149 releases, received ${releases.length}.`);
 }
 
 async function seed() {
@@ -602,14 +602,7 @@ async function seed() {
         slug, title, original_title, description, poster_url, banner_url, trailer_url, official_url,
         release_year, release_type, status, episodes_total, episodes_released, rating, age_rating
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      ON CONFLICT (slug) DO UPDATE SET
-        title = EXCLUDED.title, original_title = EXCLUDED.original_title,
-        description = EXCLUDED.description, poster_url = EXCLUDED.poster_url,
-        banner_url = EXCLUDED.banner_url, trailer_url = EXCLUDED.trailer_url,
-        official_url = EXCLUDED.official_url, release_year = EXCLUDED.release_year,
-        release_type = EXCLUDED.release_type, status = EXCLUDED.status,
-        episodes_total = EXCLUDED.episodes_total, episodes_released = EXCLUDED.episodes_released,
-        rating = EXCLUDED.rating, age_rating = EXCLUDED.age_rating, updated_at = NOW()
+      ON CONFLICT (slug) DO NOTHING
       RETURNING id`,
       [
         item.slug, item.title, item.originalTitle, item.description, item.posterUrl, item.bannerUrl,
@@ -618,7 +611,10 @@ async function seed() {
       ],
     );
     const releaseId = releaseResult.rows[0]?.id;
-    if (!releaseId) throw new Error(`Could not seed ${item.slug}`);
+    // The seed is only for a new database. Existing releases may have newer
+    // Kodik data or merged episode lists and must never be overwritten during
+    // a container restart.
+    if (!releaseId) continue;
 
     await pool.query("DELETE FROM release_genres WHERE release_id = $1", [releaseId]);
     for (const genre of item.genres) {

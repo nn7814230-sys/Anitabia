@@ -10,18 +10,28 @@
     "db:migrate": "tsx src/database/migrate.ts",
     "db:seed": "tsx src/database/seed.ts",
     "artwork:sync": "tsx src/scripts/sync-anilist-artwork.ts",
-    "stream:attach": "tsx src/scripts/attach-cloudflare-stream.ts",
+    "kodik:attach": "tsx src/scripts/attach-kodik.ts",
+    "kodik:sync": "tsx src/scripts/sync-kodik.ts",
+    "kodik:mushoku": "tsx src/scripts/sync-mushoku-tensei.ts",
+    "kodik:skipped": "tsx src/scripts/sync-kodik-skipped.ts",
+    "kodik:import": "tsx src/scripts/import-kodik-catalogue.ts",
+    "kodik:calendar": "tsx src/scripts/sync-kodik-calendar.ts",
+    "anime-corner:sync": "tsx src/scripts/sync-anime-corner.ts",
+    "catalogue:split-seasons": "tsx src/scripts/split-multi-season-releases.ts",
+    "catalogue:merge-parts": "tsx src/scripts/merge-split-parts.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
+    "@fastify/websocket": "^11.3.0",
     "dotenv": "^16.4.7",
-    "fastify": "^5.2.1",
+    "fastify": "^5.11.0",
     "pg": "^8.13.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

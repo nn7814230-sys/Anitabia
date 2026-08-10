@@ -19,9 +19,20 @@ function absolute(path: string): string {
 export const seoRoutes: FastifyPluginAsync = async (app) => {
   app.get("/robots.txt", async (_request, reply) => {
     const body = [
+      "User-agent: Yandex",
+      "Allow: /",
+      "Disallow: /api/",
+      "Disallow: /health$",
+      "Disallow: /room/",
+      "Disallow: /anime/*/watch$",
+      "",
       "User-agent: *",
       "Allow: /",
-      "Disallow: /*/watch$",
+      "Disallow: /api/",
+      "Disallow: /health$",
+      "Disallow: /room/",
+      "Disallow: /anime/*/watch$",
+      "",
       `Sitemap: ${absolute("/sitemap.xml")}`,
       "",
     ].join("\n");
@@ -33,6 +44,8 @@ export const seoRoutes: FastifyPluginAsync = async (app) => {
     const entries = await listReleaseSitemapEntries();
     const urls = [
       { loc: absolute("/"), lastmod: undefined as string | undefined },
+      { loc: absolute("/privacy"), lastmod: undefined as string | undefined },
+      { loc: absolute("/terms"), lastmod: undefined as string | undefined },
       ...entries.map((entry) => ({
         loc: absolute(`/anime/${encodeURIComponent(entry.slug)}`),
         lastmod: entry.updatedAt.toISOString(),

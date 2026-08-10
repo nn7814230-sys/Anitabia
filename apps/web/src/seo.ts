@@ -117,6 +117,17 @@ export function applyHomeSeo() {
   });
 }
 
+export function applyLegalSeo(document: "privacy" | "terms") {
+  const privacy = document === "privacy";
+  applySeo({
+    title: privacy ? "Политика конфиденциальности — Anitabia" : "Условия использования — Anitabia",
+    description: privacy
+      ? "Политика конфиденциальности Anitabia: обработка данных аккаунта, истории просмотра и OAuth-импорта."
+      : "Условия использования интернет-сервиса Anitabia.",
+    canonicalPath: privacy ? "/privacy" : "/terms",
+  });
+}
+
 export function applyReleaseSeo(release: Release, watchPage = false) {
   const releasePath = `/anime/${encodeURIComponent(release.slug)}`;
   const description = release.description.trim().slice(0, 220);

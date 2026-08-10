@@ -27,7 +27,11 @@ services:
       PORT: 4000
       SITE_URL: https://anitabia.ru
       DATABASE_URL: postgres://anitabia:anitabia@postgres:5432/anitabia
-      CLOUDFLARE_STREAM_CUSTOMER_CODE: ${CLOUDFLARE_STREAM_CUSTOMER_CODE:-}
+      KODIK_API_TOKEN: ${KODIK_API_TOKEN:-}
+      KODIK_API_URL: ${KODIK_API_URL:-https://kodik-api.com}
+      TURN_HOST: ${TURN_HOST:-anitabia.ru}
+      TURN_PORT: ${TURN_PORT:-3478}
+      TURN_SECRET: ${TURN_SECRET:?TURN_SECRET must be set in .env}
     expose:
       - "4000"
     depends_on:
@@ -46,6 +50,32 @@ services:
     depends_on:
       api:
         condition: service_started
+
+  turn:
+    image: coturn/coturn:4.15.0-r0
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - --no-tls
+      - --no-dtls
+      - --log-file=stdout
+      - --listening-port=${TURN_PORT:-3478}
+      - --listening-ip=${TURN_EXTERNAL_IP:-89.125.61.215}
+      - --relay-ip=${TURN_EXTERNAL_IP:-89.125.61.215}
+      - --min-port=49160
+      - --max-port=49200
+      - --realm=anitabia.ru
+      - --server-name=anitabia.ru
+      - --fingerprint
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET:?TURN_SECRET must be set in .env}
+      - --external-ip=${TURN_EXTERNAL_IP:-89.125.61.215}
+      - --no-multicast-peers
+      - --pidfile=/var/tmp/turnserver.pid
+      - --stale-nonce=600
+      - --user-quota=8
+      - --total-quota=200
+      - --max-bps=1000000
 
   caddy:
     image: caddy:2-alpine

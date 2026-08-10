@@ -18,7 +18,7 @@
 docker compose up --build
 ```
 
-Для размещения на сервере с доменом `anitabia.ru` Docker Compose поднимает Caddy и автоматически получает TLS-сертификат. Перед первым запуском настройте A-запись `anitabia.ru` на публичный IP сервера и откройте входящие порты 80 и 443. Затем выполните:
+Для размещения на сервере с доменом `anitabia.ru` Docker Compose поднимает Caddy и автоматически получает TLS-сертификат. Перед первым запуском настройте A-запись `anitabia.ru` на публичный IP сервера. Для сайта откройте порты 80 и 443, а для голосового чата — TCP/UDP 3478 и UDP 49160–49200. Сгенерируйте уникальный TURN-секрет (`openssl rand -hex 32`) и сохраните его в `.env` как `TURN_SECRET`. Затем выполните:
 
 ```powershell
 docker compose up --build -d
@@ -37,9 +37,10 @@ docker compose exec api node apps/api/dist/scripts/sync-anilist-artwork.js
 ### Локальная разработка
 
 1. Скопируйте файл переменных: `Copy-Item .env.example .env`.
-2. Запустите PostgreSQL: `docker compose up -d postgres`.
-3. Установите пакеты: `npm.cmd install`.
-4. Создайте таблицы и демонстрационные данные:
+2. Заполните `TURN_SECRET` длинной случайной строкой. Она обязательна даже при запуске отдельного сервиса Compose.
+3. Запустите PostgreSQL: `docker compose up -d postgres`.
+4. Установите пакеты: `npm.cmd install`.
+5. Создайте таблицы и демонстрационные данные:
 
    ```powershell
    npm.cmd run db:migrate
@@ -47,10 +48,25 @@ docker compose exec api node apps/api/dist/scripts/sync-anilist-artwork.js
    npm.cmd run artwork:sync
    ```
 
-5. Запустите клиент и API: `npm.cmd run dev`.
+6. Запустите клиент и API: `npm.cmd run dev`.
 
 Клиент будет доступен по адресу `http://localhost:5173`, API — по адресу `http://localhost:4000`.
 PostgreSQL проекта доступен на `localhost:5433`: порт `5432` оставлен свободным для существующей локальной базы данных.
+
+## Комнаты и голосовой чат
+
+Комнаты используют WebSocket для чата, синхронизации плеера и WebRTC-сигналинга. Хозяин может назначить одного соведущего, который также управляет запуском, паузой, перемоткой и выбором серии.
+
+Голос передаётся через WebRTC. Coturn используется как резервный relay, когда прямое соединение между участниками невозможно. API выдаёт только участникам активной комнаты временные TURN-данные, подписанные `TURN_SECRET`; сам секрет никогда не отправляется в браузер. Для публичного сервера задайте в `.env`:
+
+```dotenv
+TURN_HOST=anitabia.ru
+TURN_PORT=3478
+TURN_EXTERNAL_IP=89.125.61.215
+TURN_SECRET=случайная_строка_из_openssl_rand_hex_32
+```
+
+Без `TURN_SECRET` Compose намеренно не запускается, чтобы TURN нельзя было случайно опубликовать с известным или пустым секретом.
 
 ## API
 
@@ -73,24 +89,33 @@ npm.cmd run db:migrate
 npm.cmd run db:seed
 ```
 
-## Временный Cloudflare Stream
+## Kodik
 
-Cloudflare Stream подключён как изолированный временный провайдер. Он воспроизводит только видео, которые вы загрузили в свой аккаунт Cloudflare Stream или на которые у вас есть права.
+Kodik — основной плеер проекта. Для подтверждения домена в сборку добавлен файл `apps/web/public/kodik.txt`: после публикации он должен быть доступен по адресу `https://anitabia.ru/kodik.txt`.
 
-1. В Cloudflare Dashboard откройте **Stream** и скопируйте Customer Code из embed-кода. Укажите его в `.env`:
+1. В панели Kodik добавьте `anitabia.ru` в настройках сайта и дождитесь подтверждения файла.
+2. Если потребуется доступ к API, сохраните токен только в серверном `.env`:
 
    ```dotenv
-   CLOUDFLARE_STREAM_CUSTOMER_CODE=ваш_код
+   KODIK_API_TOKEN=ваш_токен
    ```
 
-2. Загрузите видео в Cloudflare Stream и скопируйте UID готового к просмотру видео.
-3. Привяжите UID к существующему эпизоду:
+3. Для безопасной массовой привязки найденных релизов выполните сначала предварительную проверку, затем импорт:
 
    ```powershell
-   npm.cmd run stream:attach -- --release frieren-beyond-journeys-end --episode 1 --uid UID_ИЗ_CLOUDFLARE
+   npm.cmd run kodik:sync
+   npm.cmd run kodik:sync -- --apply
    ```
 
-После перезапуска API эпизод будет отображать официальный Cloudflare Stream Player. Поставщик изолирован в `apps/api/src/modules/playback/cloudflare.ts`: при переходе на иной сервис его можно заменить или удалить без изменения каталога и интерфейса.
+   Импортёр выбирает только точные совпадения названий, сверяет год и при возможности отдаёт приоритет AniLibria. Он создаёт отдельные записи для всех доступных у выбранной озвучки эпизодов. Неподтверждённые совпадения не изменяют базу.
+
+4. Либо скопируйте ссылку на плеер Kodik и привяжите её к одному эпизоду вручную:
+
+   ```powershell
+   npm.cmd run kodik:attach -- --release frieren-beyond-journeys-end --episode 1 --url https://kodik.cc/...
+   ```
+
+Ссылка проходит серверную проверку: принимаются только HTTPS-адреса на доменах Kodik. Плеер изолирован в `apps/api/src/modules/playback/kodik.ts`; Cloudflare Stream из проекта удалён.
 
 ## Структура
 

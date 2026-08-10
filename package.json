@@ -14,7 +14,15 @@
     "db:migrate": "npm run db:migrate --workspace @anitabia/api",
     "db:seed": "npm run db:seed --workspace @anitabia/api",
     "artwork:sync": "npm run artwork:sync --workspace @anitabia/api",
-    "stream:attach": "npm run stream:attach --workspace @anitabia/api --"
+    "kodik:attach": "npm run kodik:attach --workspace @anitabia/api --",
+    "kodik:sync": "npm run kodik:sync --workspace @anitabia/api --",
+    "kodik:mushoku": "npm run kodik:mushoku --workspace @anitabia/api --",
+    "kodik:skipped": "npm run kodik:skipped --workspace @anitabia/api --",
+    "kodik:import": "npm run kodik:import --workspace @anitabia/api --",
+    "kodik:calendar": "npm run kodik:calendar --workspace @anitabia/api --",
+    "anime-corner:sync": "npm run anime-corner:sync --workspace @anitabia/api --",
+    "catalogue:split-seasons": "npm run catalogue:split-seasons --workspace @anitabia/api --",
+    "catalogue:merge-parts": "npm run catalogue:merge-parts --workspace @anitabia/api --"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

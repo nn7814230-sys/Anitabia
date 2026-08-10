@@ -1,8 +1,9 @@
 import type { QueryResultRow } from "pg";
 
 import { pool } from "../../database/client.js";
-import { cloudflareStreamEmbedUrl } from "../playback/cloudflare.js";
+import { kodikEmbedUrl } from "../playback/kodik.js";
 import type { Episode, Release, ReleaseStatus } from "../../types.js";
+import { popularReleaseSlugs } from "./popular.js";
 
 type ReleaseRow = QueryResultRow & {
   id: string;
@@ -30,7 +31,7 @@ type EpisodeRow = QueryResultRow & {
   title: string | null;
   duration_seconds: number | null;
   video_url: string | null;
-  cloudflare_stream_uid: string | null;
+  kodik_url: string | null;
   published_at: Date | null;
 };
 
@@ -69,7 +70,7 @@ function mapRelease(row: ReleaseRow): Release {
 }
 
 function mapEpisode(row: EpisodeRow): Episode {
-  const embedUrl = cloudflareStreamEmbedUrl(row.cloudflare_stream_uid);
+  const embedUrl = kodikEmbedUrl(row.kodik_url);
 
   return {
     id: row.id,
@@ -78,7 +79,7 @@ function mapEpisode(row: EpisodeRow): Episode {
     durationSeconds: row.duration_seconds,
     videoUrl: row.video_url,
     embedUrl,
-    videoProvider: embedUrl ? "cloudflare_stream" : row.video_url ? "native" : null,
+    videoProvider: embedUrl ? "kodik" : row.video_url ? "native" : null,
     publishedAt: row.published_at?.toISOString() ?? null,
   };
 }
@@ -88,9 +89,25 @@ export interface ReleaseFilters {
   genre?: string;
   status?: ReleaseStatus;
   limit: number;
+  offset: number;
 }
 
-export async function listReleases(filters: ReleaseFilters): Promise<Release[]> {
+export interface ReleaseListResult {
+  releases: Release[];
+  total: number;
+}
+
+export interface PopularReleaseResult {
+  releases: Release[];
+  source: {
+    label: string;
+    url: string | null;
+    publishedAt: string | null;
+    syncedAt: string | null;
+  };
+}
+
+function releaseConditions(filters: Omit<ReleaseFilters, "limit" | "offset">): { condition: string; values: string[] } {
   const where: string[] = [];
   const values: string[] = [];
 
@@ -113,8 +130,12 @@ export async function listReleases(filters: ReleaseFilters): Promise<Release[]> 
     )`);
   }
 
-  values.push(String(filters.limit));
-  const condition = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  return { condition: where.length ? `WHERE ${where.join(" AND ")}` : "", values };
+}
+
+export async function listReleases(filters: ReleaseFilters): Promise<ReleaseListResult> {
+  const { condition, values } = releaseConditions(filters);
+  const pageValues = [...values, String(filters.limit), String(filters.offset)];
   const result = await pool.query<ReleaseRow>(
     `SELECT ${releaseFields}
      FROM releases r
@@ -122,12 +143,83 @@ export async function listReleases(filters: ReleaseFilters): Promise<Release[]> 
      LEFT JOIN genres g ON g.id = rg.genre_id
      ${condition}
      GROUP BY r.id
-     ORDER BY r.created_at DESC
-     LIMIT $${values.length}`,
+     ORDER BY r.created_at DESC, r.id DESC
+     LIMIT $${values.length + 1}
+     OFFSET $${values.length + 2}`,
+    pageValues,
+  );
+
+  const totalResult = await pool.query<{ count: string }>(
+    `SELECT count(*)::text AS count
+     FROM releases r
+     ${condition}`,
     values,
   );
 
-  return result.rows.map(mapRelease);
+  return {
+    releases: result.rows.map(mapRelease),
+    total: Number(totalResult.rows[0]?.count ?? 0),
+  };
+}
+
+function animeCornerLabel(articleTitle: string): string {
+  const match = articleTitle.match(/(Winter|Spring|Summer|Fall)\s+(\d{4})\s+Anime Rankings\s*[–—-]\s*Week\s*(\d+)/iu);
+  if (!match) return `По голосованию Anime Corner · ${articleTitle}`;
+  const seasons: Record<string, string> = { winter: "зима", spring: "весна", summer: "лето", fall: "осень" };
+  return `По голосованию Anime Corner · ${seasons[match[1].toLowerCase()]} ${match[2]}, неделя ${match[3]}`;
+}
+
+export async function listPopularReleases(): Promise<PopularReleaseResult> {
+  const dynamic = await pool.query<ReleaseRow>(
+    `SELECT ${releaseFields}
+     FROM anime_corner_rankings popular
+     JOIN releases r ON r.id = popular.release_id
+     LEFT JOIN release_genres rg ON rg.release_id = r.id
+     LEFT JOIN genres g ON g.id = rg.genre_id
+     WHERE popular.release_id IS NOT NULL
+     GROUP BY r.id, popular.rank
+     ORDER BY popular.rank
+     LIMIT 12`,
+  );
+  const sync = await pool.query<{
+    article_url: string; article_title: string; published_at: Date | null; synced_at: Date;
+  }>(
+    `SELECT article_url, article_title, published_at, synced_at
+     FROM anime_corner_syncs WHERE source = 'anime-corner-weekly'`,
+  );
+  const syncRow = sync.rows[0];
+  if (dynamic.rows.length >= 5 && syncRow) {
+    return {
+      releases: dynamic.rows.map(mapRelease),
+      source: {
+        label: animeCornerLabel(syncRow.article_title),
+        url: syncRow.article_url,
+        publishedAt: syncRow.published_at?.toISOString() ?? null,
+        syncedAt: syncRow.synced_at.toISOString(),
+      },
+    };
+  }
+
+  const fallback = await pool.query<ReleaseRow>(
+    `SELECT ${releaseFields}
+     FROM unnest($1::text[]) WITH ORDINALITY AS popular(slug, position)
+     JOIN releases r ON r.slug = popular.slug
+     LEFT JOIN release_genres rg ON rg.release_id = r.id
+     LEFT JOIN genres g ON g.id = rg.genre_id
+     GROUP BY r.id, popular.position
+     ORDER BY popular.position`,
+    [popularReleaseSlugs],
+  );
+
+  return {
+    releases: fallback.rows.map(mapRelease),
+    source: {
+      label: "По голосованию Anime Corner · резервная подборка",
+      url: null,
+      publishedAt: null,
+      syncedAt: null,
+    },
+  };
 }
 
 export async function findReleaseBySlug(
@@ -147,7 +239,7 @@ export async function findReleaseBySlug(
   if (!row) return null;
 
   const episodeResult = await pool.query<EpisodeRow>(
-    `SELECT id, number, title, duration_seconds, video_url, cloudflare_stream_uid, published_at
+    `SELECT id, number, title, duration_seconds, video_url, kodik_url, published_at
      FROM episodes
      WHERE release_id = $1
      ORDER BY number`,

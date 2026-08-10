@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Камикадзе">
+  <circle cx="48" cy="48" r="44" fill="#111820" stroke="#d2ed59" stroke-width="4"/>
+  <path d="M48 19c12 15 22 25 22 39a22 22 0 0 1-44 0c0-11 6-20 15-30-1 12 2 18 7 21 6-8 8-17 0-30z" fill="#d2ed59"/>
+  <path d="M48 51c7 8 9 13 5 20a8 8 0 0 1-12-7c0-5 3-9 7-13z" fill="#111820"/>
+</svg>
